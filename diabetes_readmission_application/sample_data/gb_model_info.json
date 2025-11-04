@@ -1,0 +1,11 @@
+{
+  "model": "GradientBoostingClassifier (Stable Threshold)",
+  "threshold": 0.45,
+  "metrics": {
+    "accuracy": 0.8809786423343026,
+    "precision": 0.2782608695652174,
+    "recall": 0.028169014084507043,
+    "f1": 0.051159072741806554,
+    "roc_auc": 0.653884635184651
+  }
+}
