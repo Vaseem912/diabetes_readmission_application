@@ -1,25 +1,85 @@
 import streamlit as st
-import pandas as pd, numpy as np, joblib, os
+import pandas as pd
+import numpy as np
+import joblib
+import os
 
-st.set_page_config(page_title="Diabetes Readmission Predictor", page_icon="🏥", layout="wide")
+# =====================================================
+# 🏥 Diabetes Readmission Predictor — Streamlit App
+# =====================================================
+
+st.set_page_config(
+    page_title="Diabetes Readmission Predictor",
+    page_icon="🏥",
+    layout="wide",
+    initial_sidebar_state="expanded"
+)
+
+# =====================================================
+# 🔧 Load Model and Preprocessor Safely
+# =====================================================
 
 @st.cache_resource
 def load_assets():
-    model = joblib.load(os.path.join("sample_data", "gb_best_model.joblib"))
-    pre = joblib.load(os.path.join("sample_data", "preprocessor.joblib"))
-    return model, pre
+    try:
+        base_path = os.path.dirname(__file__)  # Folder where this file is
+        model_path = os.path.join(base_path, "sample_data", "gb_best_model.joblib")
+        pre_path = os.path.join(base_path, "sample_data", "preprocessor.joblib")
+
+        model = joblib.load(model_path)
+        pre = joblib.load(pre_path)
+        return model, pre
+
+    except FileNotFoundError as e:
+        st.error("⚠️ Model or preprocessor file not found. Please verify the 'sample_data' folder exists.")
+        st.stop()
 
 model, pre = load_assets()
 THRESHOLD = 0.45
 
-st.title("🏥 Diabetes Readmission Predictor")
-st.write("Predict if a diabetic patient will be readmitted within 30 days after discharge.")
+# =====================================================
+# 💡 App Layout
+# =====================================================
 
+st.markdown(
+    """
+    <style>
+    .main {
+        background-color: #f5f9ff;
+    }
+    .stButton>button {
+        color: white;
+        background-color: #0077b6;
+        border-radius: 8px;
+        height: 3em;
+        width: 100%;
+        font-weight: bold;
+    }
+    .stButton>button:hover {
+        background-color: #0096c7;
+    }
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+st.title("🏥 Diabetes Readmission Predictor")
+st.markdown(
+    """
+    Use this app to estimate whether a diabetic patient is **likely to be readmitted within 30 days** after discharge.
+    The prediction is powered by a tuned **Gradient Boosting model** trained on real hospital data.
+    """
+)
+
+# =====================================================
+# 🧾 Sidebar Inputs
+# =====================================================
 with st.sidebar:
-    st.header("Patient Info")
-    race = st.selectbox("Race", ["Caucasian","AfricanAmerican","Hispanic","Asian","Other"])
-    gender = st.selectbox("Gender", ["Male","Female"])
-    age_group = st.selectbox("Age Group", ["Young","Middle","Elderly"])
+    st.header("🧍 Patient Information")
+
+    race = st.selectbox("Race", ["Caucasian", "AfricanAmerican", "Hispanic", "Asian", "Other"])
+    gender = st.selectbox("Gender", ["Male", "Female"])
+    age_group = st.selectbox("Age Group", ["Young", "Middle", "Elderly"])
     time_in_hospital = st.number_input("Days in Hospital", 1, 14, 4)
     num_lab_procedures = st.number_input("Lab Procedures", 1, 100, 40)
     num_medications = st.number_input("Medications", 1, 50, 10)
@@ -33,6 +93,9 @@ with st.sidebar:
 
     predict = st.button("🔍 Predict Readmission")
 
+# =====================================================
+# 🤖 Prediction Section
+# =====================================================
 if predict:
     sample = {
         "race": race, "gender": gender, "age_group": age_group,
@@ -49,18 +112,30 @@ if predict:
     }
 
     df = pd.DataFrame([sample])
+
+    # Align columns with training features
     for col in pre.feature_names_in_:
         if col not in df.columns:
             df[col] = np.nan
     df = df[pre.feature_names_in_]
 
+    # Predict
     Xp = pre.transform(df)
-    prob = model.predict_proba(Xp)[0,1]
+    prob = model.predict_proba(Xp)[0, 1]
     pred = int(prob >= THRESHOLD)
 
-    st.subheader("Prediction Result")
+    # =====================================================
+    # 🎯 Display Results
+    # =====================================================
+    st.subheader("📊 Prediction Result")
+
     if pred == 1:
-        st.error(f"High Risk of Readmission (Prob = {prob:.1%})")
+        st.error(f"🟥 **High Risk of Readmission** — Probability: {prob:.1%}")
     else:
-        st.success(f"Low Risk of Readmission (Prob = {prob:.1%})")
+        st.success(f"🟩 **Low Risk of Readmission** — Probability: {prob:.1%}")
+
     st.progress(float(prob))
+    st.caption(f"Threshold used for decision: {THRESHOLD:.2f}")
+
+st.markdown("---")
+st.caption("Developed with ❤️ using Streamlit and Gradient Boosting (2025).")
